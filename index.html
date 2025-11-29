@@ -367,20 +367,31 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, addDoc, collection, serverTimestamp, setLogLevel, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // Enable debug logging for Firestore
         setLogLevel('debug');
 
         // --- GLOBAL CONSTANTS & CONFIG ---
-        const ADMIN_CODE = "STARADMIN123"; // *** REQUIRED ADMIN ACCESS CODE ***
-
-        // Retrieve and parse mandatory global variables
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'oes-martha-default';
-        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
-        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
-        const COLLECTION_PATH = `/artifacts/${appId}/public/data/oes_applications`;
+        const ADMIN_CODE = "STARADMIN123"; 
+        
+        // ====================================================================
+        // FIREBASE CONFIGURATION (Provided by user)
+        // ====================================================================
+        const FIREBASE_CONFIG = {
+          apiKey: "AIzaSyBAYN5FX3snNSLDjcxnjT1PNC33Qu5TlWo",
+          authDomain: "hezekiah-lodge-admin.firebaseapp.com",
+          projectId: "hezekiah-lodge-admin",
+          storageBucket: "hezekiah-lodge-admin.firebasestorage.app",
+          messagingSenderId: "599617453177",
+          appId: "1:599617453177:web:7ff088d9ac115427aca8a8",
+          // measurementId is optional and not needed for core functionality
+        };
+        
+        // We use a hardcoded, generic App ID for the public collection path.
+        const LIVE_APP_ID = 'oes-martha-live'; 
+        const COLLECTION_PATH = `/artifacts/${LIVE_APP_ID}/public/data/oes_applications`;
 
         let db, auth;
         let userId = 'pending_auth';
@@ -393,7 +404,6 @@
         const userIdDisplay = document.getElementById('userIdDisplay');
         
         // Views
-        const viewContainer = document.getElementById('viewContainer');
         const applicationView = document.getElementById('applicationView');
         const adminLoginView = document.getElementById('adminLoginView');
         const adminPanelView = document.getElementById('adminPanelView');
@@ -461,30 +471,22 @@
 
         async function initFirebase() {
             try {
-                if (!firebaseConfig) {
-                    throw new Error("Initialization Failed: Firebase configuration is missing or invalid.");
-                }
-
-                // 2. Initialize services
-                const app = initializeApp(firebaseConfig);
+                // 1. Initialize services
+                const app = initializeApp(FIREBASE_CONFIG);
                 auth = getAuth(app);
                 db = getFirestore(app);
 
-                // 3. Authenticate based on environment token or fall back to anonymous
-                let userCredential;
-                if (initialAuthToken) {
-                    userCredential = await signInWithCustomToken(auth, initialAuthToken);
-                } else {
-                    userCredential = await signInAnonymously(auth);
-                }
+                // 2. Authenticate with Anonymous Sign-In (Required for GitHub Pages)
+                const userCredential = await signInAnonymously(auth);
 
                 if (userCredential && userCredential.user && userCredential.user.uid) {
-                    userId = userCredential.user.uid;
-                    console.log(`Firebase Auth Success. User ID: ${userId}`);
+                    // NOTE: Anonymous user IDs change across sessions, but we use it to prove auth.
+                    userId = userCredential.user.uid; 
+                    console.log(`Firebase Auth Success via Anonymous. User ID: ${userId}`);
                     
                     // Success: Reveal the form and update status
-                    updateStatus('success', `Connection secured. Your Session ID: ${userId}`);
-                    userIdDisplay.textContent = `User ID for Database Access: ${userId}`;
+                    updateStatus('success', `Connection secured. App ID: ${LIVE_APP_ID}`);
+                    userIdDisplay.textContent = `Client User ID (Temporary): ${userId}`;
                     
                     setTimeout(() => {
                         statusMessage.classList.add('hidden');
@@ -493,20 +495,21 @@
                         switchView('application'); // Show the application form
                     }, 500); 
                 } else {
-                    throw new Error("Authentication failed: Could not retrieve a valid user ID.");
+                    throw new Error("Authentication failed: Could not retrieve a valid user ID after anonymous sign-in.");
                 }
 
             } catch (error) {
-                console.error("Firebase Authentication/Initialization Error:", error);
+                console.error("Firebase Initialization Error:", error);
                 
                 // Detailed error display for debugging
                 updateStatus('hidden', ''); 
                 errorDisplay.classList.remove('hidden');
-                errorText.textContent = error.message;
+                errorText.textContent = `Firebase connection failed. Error: ${error.message}. Ensure Anonymous Auth is enabled and Security Rules are correct.`;
                 errorDisplay.classList.add('message-box-error');
+                
                 // Ensure form and admin button are visible even if status fails, but disable submission
                 applicationView.classList.remove('hidden');
-                form.classList.remove('hidden');
+                form.classList.add('hidden'); // Keep form hidden if auth failed
                 submitButton.disabled = true;
             }
         }
@@ -533,11 +536,11 @@
                     data[key] = value;
                 }
                 
-                data.applicantId = userId;
+                data.applicantId = userId; // The anonymous ID of the submitting client
                 data.submissionDate = serverTimestamp();
-                data.appId = appId; 
+                data.appId = LIVE_APP_ID; 
                 data.chapterName = 'Martha Chapter #7 OES';
-                data.status = 'Pending Membership Review'; // Initial status
+                data.status = 'Pending Membership Review'; 
                 
                 const collectionRef = collection(db, COLLECTION_PATH);
                 await addDoc(collectionRef, data);
@@ -549,7 +552,7 @@
 
             } catch (e) {
                 console.error("Error adding document: ", e);
-                messageBox.textContent = `Submission failed due to a database error: ${e.message}. Please check your connection.`;
+                messageBox.textContent = `Submission failed due to a database error: ${e.message}. Check your Firebase Security Rules.`;
                 messageBox.className = "mt-6 p-4 text-center text-sm rounded-lg message-box-error block";
             } finally {
                 submitButton.textContent = 'Submit Membership Application';
@@ -652,7 +655,7 @@
 
             }, (error) => {
                 console.error("Error loading applications in Admin Panel:", error);
-                adminPanelStatus.textContent = 'Error loading data: Permission Denied or Network Issue.';
+                adminPanelStatus.textContent = `Error loading data: ${error.message}. Check your Firebase Security Rules.`;
                 adminPanelStatus.classList.remove('hidden');
                 adminPanelStatus.classList.add('message-box-error');
                 applicationsList.innerHTML = '';
