@@ -1,0 +1,667 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Martha Chapter #7 - Membership Application</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* --- OES Deep Blue & Star Point Theme --- */
+        :root {
+            --color-primary: #00284D; /* Deep Blue - Background/Main Text */
+            --color-accent: #FFD700; /* Gold/Yellow (Main Accent) */
+            --color-background: #f8faff; /* Very Light Blue-Gray */
+            /* Star Point Colors for Section Borders */
+            --color-point-yellow: #FFD700; /* Yellow */
+            --color-point-blue: #00BFFF; /* Blue */
+            --color-point-red: #DC143C; /* Red */
+            --color-point-green: #3CB371; /* Green */
+            --color-point-white: #E0E0E0; /* Light Gray/White */
+        }
+        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Inter:wght@400;600;700&display=swap');
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--color-background);
+        }
+        
+        /* Header Styling */
+        .header-block {
+            background-color: var(--color-primary);
+            color: white;
+            border-bottom: 5px solid var(--color-accent);
+            border-radius: 0.75rem 0.75rem 0 0;
+        }
+        .header-block h1 {
+            font-family: 'Playfair Display', serif;
+            font-size: 2.5rem;
+        }
+        .star-icon {
+            font-size: 3rem;
+            margin-bottom: 10px;
+            display: block;
+            color: var(--color-accent);
+            text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+        }
+
+        /* Form Element Styling */
+        .section-header {
+            color: var(--color-primary);
+            border-bottom: 2px solid var(--color-accent);
+            padding-bottom: 0.5rem;
+            font-family: 'Playfair Display', serif;
+        }
+        
+        /* Colored Section Borders (Restored for visual structure) */
+        .section-blue { border-left: 5px solid var(--color-point-blue); }
+        .section-yellow { border-left: 5px solid var(--color-point-yellow); }
+        .section-green { border-left: 5px solid var(--color-point-green); }
+        .section-red { border-left: 5px solid var(--color-point-red); }
+        .section-white { border-left: 5px solid var(--color-point-white); }
+
+
+        .input-field {
+            border: 1px solid #c8d2e0; 
+            border-radius: 0.5rem;
+            padding: 0.75rem;
+            width: 100%;
+            background-color: #ffffff;
+            transition: all 0.2s ease-in-out;
+        }
+        .input-field:focus {
+            border-color: var(--color-accent); 
+            box-shadow: 0 0 0 3px rgba(255, 215, 0, 0.3);
+            outline: none;
+        }
+        .form-group label {
+            font-weight: 600;
+            color: #374151;
+            margin-bottom: 0.25rem;
+            display: block;
+            line-height: 1.5;
+        }
+
+        /* Submit Button Styling */
+        .btn-submit {
+            background-color: var(--color-accent);
+            color: var(--color-primary);
+            font-weight: 700;
+            border: 2px solid var(--color-accent);
+            transition: background-color 0.3s, opacity 0.3s, transform 0.2s;
+        }
+        .btn-submit:hover {
+            background-color: #e0b445;
+            transform: scale(1.02);
+        }
+        .btn-submit:disabled {
+            background-color: #d1d5db;
+            color: #6b7280;
+            cursor: not-allowed;
+            transform: scale(1);
+        }
+        
+        .btn-admin {
+            background-color: var(--color-primary);
+            color: var(--color-accent);
+            border: 2px solid var(--color-accent);
+        }
+        .btn-admin:hover {
+            background-color: #1a416a;
+        }
+        
+        .admin-card {
+            background-color: #ffffff;
+            border: 1px solid #e5e7eb;
+            border-top: 5px solid var(--color-primary);
+        }
+
+        /* Utility classes for status messages */
+        .message-box-success { background-color: #d1fae5; color: #065f46; border: 1px solid #34d399; }
+        .message-box-error { background-color: #fee2e2; color: #991b1b; border: 1px solid #f87171; }
+    </style>
+</head>
+<body class="p-4 sm:p-8">
+
+    <div class="max-w-4xl mx-auto bg-white shadow-2xl rounded-xl">
+        
+        <!-- Header and Emblem -->
+        <header class="header-block text-center p-6 sm:p-8">
+            <span class="star-icon">★</span> 
+            <h1 class="font-extrabold tracking-tight">MEMBERSHIP APPLICATION</h1>
+            <p class="text-xl mt-1 font-bold text-gray-200">Martha Chapter #7</p>
+            <p class="text-sm mt-2 text-gray-400">Order of the Eastern Star (O.E.S.)</p>
+        </header>
+
+        <div class="p-6 sm:p-10">
+            <!-- Loading/Error Indicator (Always visible during initialization) -->
+            <div id="statusMessage" class="text-center p-4 text-white font-medium bg-gray-600 rounded-lg mb-8">
+                Initializing secure connection...
+            </div>
+            
+            <!-- Detailed Error Display (Hidden by default) -->
+            <div id="errorDisplay" class="hidden mb-8 p-4 bg-red-100 border-l-4 border-red-500 text-red-700 rounded-md">
+                <p class="font-bold">Connection Error</p>
+                <p id="errorText">Something went wrong.</p>
+            </div>
+
+            <!-- VIEW CONTAINER -->
+            <div id="viewContainer">
+                <!-- 1. APPLICATION FORM VIEW (Default) -->
+                <div id="applicationView" class="space-y-6">
+                    <button id="showAdminLoginButton" class="w-full py-2 rounded-lg font-bold btn-admin text-sm mb-6 transition-transform hover:scale-[1.01]">
+                        Admin Login: Review Applications
+                    </button>
+                    <!-- Main Form Content (Hidden until auth succeeds) -->
+                    <form id="oesApplicationForm" class="space-y-10 hidden">
+                        
+                        <section class="space-y-6 bg-gray-50 p-4 rounded-lg section-blue">
+                            <h2 class="text-xl font-bold section-header">Applicant Personal Details</h2>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div class="form-group md:col-span-2">
+                                    <label for="fullName">Name</label>
+                                    <input type="text" id="fullName" name="fullName" class="input-field" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="phone">Phone</label>
+                                    <input type="tel" id="phone" name="phone" class="input-field" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="email">Email</label>
+                                    <input type="email" id="email" name="email" class="input-field" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="dob">DOB (Date of Birth)</label>
+                                    <input type="date" id="dob" name="dob" class="input-field" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="emergencyContact">Emergency Contact</label>
+                                    <input type="text" id="emergencyContact" name="emergencyContact" class="input-field" required>
+                                </div>
+                                <div class="form-group md:col-span-2">
+                                    <label for="address">Address</label>
+                                    <input type="text" id="address" name="address" class="input-field" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="tShirtSize">T-Shirt Size</label>
+                                    <select id="tShirtSize" name="tShirtSize" class="input-field appearance-none bg-white" required>
+                                        <option value="" disabled selected>Select Size</option>
+                                        <option value="S">Small (S)</option>
+                                        <option value="M">Medium (M)</option>
+                                        <option value="L">Large (L)</option>
+                                        <option value="XL">Extra Large (XL)</option>
+                                        <option value="2XL">2XL</option>
+                                        <option value="3XL">3XL+</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="favoriteStarPointColor">Favorite Star Point Color</label>
+                                    <input type="text" id="favoriteStarPointColor" name="favoriteStarPointColor" class="input-field" placeholder="e.g., Blue, Yellow, White, Red, or Green" required>
+                                </div>
+                            </div>
+                        </section>
+                        
+                        <section class="space-y-6 bg-gray-50 p-4 rounded-lg section-yellow">
+                            <h2 class="text-xl font-bold section-header">References & Sponsor</h2>
+                            <p class="font-semibold text-gray-700">List two references and their phone numbers:</p>
+                            <div class="space-y-4">
+                                <div class="form-group">
+                                    <label for="reference1">1. Reference Name and Phone Number</label>
+                                    <input type="text" id="reference1" name="reference1" class="input-field" placeholder="Name and (XXX) XXX-XXXX" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="reference2">2. Reference Name and Phone Number</label>
+                                    <input type="text" id="reference2" name="reference2" class="input-field" placeholder="Name and (XXX) XXX-XXXX" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="memberSignature">OES Member Signature (Sponsor Name)</label>
+                                    <input type="text" id="memberSignature" name="memberSignature" class="input-field font-serif italic" placeholder="Name of Sponsoring OES Member">
+                                </div>
+                            </div>
+                        </section>
+
+
+                        <section class="space-y-8 bg-gray-50 p-4 rounded-lg section-red">
+                            <h2 class="text-xl font-bold section-header">Beliefs and Background Questions</h2>
+                            <p class="text-gray-700">Please answer the following questions completely and honestly.</p>
+
+                            <div class="form-group">
+                                <label for="q1">1. What inspired you to want to become an Eastern Star?</label>
+                                <textarea id="q1" name="q1" rows="3" class="input-field resize-none" required></textarea>
+                            </div>
+
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div class="form-group">
+                                    <label for="q2">2. Do you believe in God?</label>
+                                    <select id="q2" name="q2" class="input-field appearance-none bg-white" required>
+                                        <option value="Yes">YES</option>
+                                        <option value="No">NO</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="q6">6. Do you have a religious preference?</label>
+                                    <input type="text" id="q6" name="q6" class="input-field" placeholder="e.g., Christian, Jewish, None, etc." required>
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="q3">3. Do you attend Church? If so, where and the name/location?</label>
+                                <textarea id="q3" name="q3" rows="2" class="input-field resize-none" required></textarea>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="q10">10. Do you believe in Secrecy, Commitment, and Loyalty? Explain why.</label>
+                                <textarea id="q10" name="q10" rows="3" class="input-field resize-none" required></textarea>
+                            </div>
+
+                        </section>
+                        
+                        <section class="space-y-8 bg-gray-50 p-4 rounded-lg section-green">
+                            <h2 class="text-xl font-bold section-header">Commitment & Logistics</h2>
+                            
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div class="form-group">
+                                    <label for="q4">4. Are you willing to travel?</label>
+                                    <select id="q4" name="q4" class="input-field appearance-none bg-white" required>
+                                        <option value="Yes">YES</option>
+                                        <option value="No">NO</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="q5">5. Do you have reliable transportation?</label>
+                                    <select id="q5" name="q5" class="input-field appearance-none bg-white" required>
+                                        <option value="Yes">YES</option>
+                                        <option value="No">NO</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="q7">7. Are you available on Saturdays?</label>
+                                    <select id="q7" name="q7" class="input-field appearance-none bg-white" required>
+                                        <option value="Yes">YES</option>
+                                        <option value="No">NO</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="q12">12. Do you have a problem paying monthly dues?</label>
+                                    <select id="q12" name="q12" class="input-field appearance-none bg-white" required>
+                                        <option value="No">NO</option>
+                                        <option value="Yes">YES</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="q11">11. How do you feel about Financial Obligations?</label>
+                                <textarea id="q11" name="q11" rows="2" class="input-field resize-none" required></textarea>
+                            </div>
+                            <div class="form-group">
+                                <label for="q13">13. How do you feel about Sisterhood?</label>
+                                <textarea id="q13" name="q13" rows="2" class="input-field resize-none" required></textarea>
+                            </div>
+
+                        </section>
+
+
+                        <section class="space-y-6 bg-gray-50 p-4 rounded-lg section-white">
+                            <h2 class="text-xl font-bold section-header">Prior Application History</h2>
+                            <div class="form-group">
+                                <label for="q8">8. Have you ever applied to another Chapter? If so, where and the name of the Chapter?</label>
+                                <textarea id="q8" name="q8" rows="2" class="input-field resize-none" required></textarea>
+                            </div>
+                            <div class="form-group">
+                                <label for="q9">9. If you answered Yes to Question #8, what disposition was made of the petition?</label>
+                                <textarea id="q9" name="q9" rows="2" class="input-field resize-none" required></textarea>
+                            </div>
+                        </section>
+
+
+                        <!-- Signature and Submission -->
+                        <div class="flex flex-col items-center pt-8 gap-4">
+                            <div class="form-group w-full sm:w-1/2">
+                                <label for="applicantSignature">Applicant Signature (Type full name to acknowledge)</label>
+                                <input type="text" id="applicantSignature" name="applicantSignature" class="input-field font-serif italic" placeholder="Applicant Name (Type to sign)">
+                            </div>
+
+                            <button type="submit" id="submitButton" class="w-full sm:w-1/2 px-8 py-4 rounded-lg shadow-xl btn-submit tracking-wider disabled:opacity-50" disabled>
+                                Submit Membership Application
+                            </button>
+                            <div id="spinner" class="hidden text-gray-700 font-bold">Processing...</div>
+                            <p id="userIdDisplay" class="text-xs text-gray-500"></p>
+                        </div>
+
+                        <!-- Submission Message Box -->
+                        <div id="messageBox" class="hidden mt-6 p-4 text-center text-sm rounded-lg" role="alert"></div>
+
+                    </form>
+                </div> <!-- End Application View -->
+
+                <!-- 2. ADMIN LOGIN VIEW -->
+                <div id="adminLoginView" class="hidden p-6 text-center">
+                    <h2 class="text-2xl font-bold text-gray-800 mb-6">Administrator Access</h2>
+                    <p class="text-gray-600 mb-4">Enter the secret admin code to view submitted applications.</p>
+                    <input type="password" id="adminCodeInput" placeholder="Admin Code" class="input-field max-w-sm mx-auto mb-4">
+                    <button id="adminLoginButton" class="w-full sm:w-1/2 px-8 py-3 rounded-lg font-bold btn-admin transition-transform hover:scale-[1.01]">
+                        Login
+                    </button>
+                    <p id="adminLoginError" class="text-red-500 mt-3 hidden">Incorrect Code. Try again.</p>
+                    <button id="backToAppButton" class="mt-8 text-sm text-gray-500 hover:text-gray-700">← Back to Application Form</button>
+                </div>
+
+                <!-- 3. ADMIN PANEL VIEW -->
+                <div id="adminPanelView" class="hidden">
+                    <div class="flex justify-between items-center mb-6 border-b pb-3">
+                         <h2 class="text-2xl font-bold text-gray-800">Pending Applications</h2>
+                         <button id="adminLogoutButton" class="text-sm font-semibold text-red-600 px-3 py-1 border border-red-300 rounded hover:bg-red-50">Logout</button>
+                    </div>
+                   
+                    <p id="adminPanelStatus" class="p-3 text-sm text-gray-600 bg-yellow-50 rounded hidden">Loading applications...</p>
+
+                    <div id="applicationsList" class="space-y-4">
+                        <!-- Applications will be dynamically inserted here -->
+                        <p id="noApplicationsMsg" class="text-center text-gray-500 p-8 hidden">No applications have been submitted yet.</p>
+                    </div>
+                    
+                </div>
+            </div> <!-- End VIEW CONTAINER -->
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, addDoc, collection, serverTimestamp, setLogLevel, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Enable debug logging for Firestore
+        setLogLevel('debug');
+
+        // --- GLOBAL CONSTANTS & CONFIG ---
+        const ADMIN_CODE = "STARADMIN123"; // *** REQUIRED ADMIN ACCESS CODE ***
+
+        // Retrieve and parse mandatory global variables
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'oes-martha-default';
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+        const COLLECTION_PATH = `/artifacts/${appId}/public/data/oes_applications`;
+
+        let db, auth;
+        let userId = 'pending_auth';
+        let isAdminLoggedIn = false;
+
+        // --- UI ELEMENTS ---
+        const statusMessage = document.getElementById('statusMessage');
+        const errorDisplay = document.getElementById('errorDisplay');
+        const errorText = document.getElementById('errorText');
+        const userIdDisplay = document.getElementById('userIdDisplay');
+        
+        // Views
+        const viewContainer = document.getElementById('viewContainer');
+        const applicationView = document.getElementById('applicationView');
+        const adminLoginView = document.getElementById('adminLoginView');
+        const adminPanelView = document.getElementById('adminPanelView');
+        
+        // Form Elements
+        const form = document.getElementById('oesApplicationForm');
+        const submitButton = document.getElementById('submitButton');
+        const spinner = document.getElementById('spinner');
+        const messageBox = document.getElementById('messageBox');
+        
+        // Admin Login Elements
+        const showAdminLoginButton = document.getElementById('showAdminLoginButton');
+        const backToAppButton = document.getElementById('backToAppButton');
+        const adminCodeInput = document.getElementById('adminCodeInput');
+        const adminLoginButton = document.getElementById('adminLoginButton');
+        const adminLoginError = document.getElementById('adminLoginError');
+        
+        // Admin Panel Elements
+        const adminLogoutButton = document.getElementById('adminLogoutButton');
+        const applicationsList = document.getElementById('applicationsList');
+        const adminPanelStatus = document.getElementById('adminPanelStatus');
+        const noApplicationsMsg = document.getElementById('noApplicationsMsg');
+
+
+        // --- VIEW MANAGEMENT ---
+
+        /**
+         * Switches the active view displayed to the user.
+         * @param {string} viewId - The ID of the view to show ('application', 'adminLogin', 'adminPanel')
+         */
+        function switchView(viewId) {
+            applicationView.classList.add('hidden');
+            adminLoginView.classList.add('hidden');
+            adminPanelView.classList.add('hidden');
+
+            if (viewId === 'adminLogin') {
+                adminLoginView.classList.remove('hidden');
+                adminLoginError.classList.add('hidden'); // Clear error message
+                adminCodeInput.value = ''; // Clear code input
+            } else if (viewId === 'adminPanel') {
+                adminPanelView.classList.remove('hidden');
+                loadApplications(); // Load data when panel is opened
+            } else { // Default to applicationView
+                applicationView.classList.remove('hidden');
+            }
+        }
+
+
+        // --- FIREBASE INITIALIZATION & AUTH ---
+
+        function updateStatus(type, message) {
+            statusMessage.classList.remove('message-box-success', 'message-box-error', 'hidden');
+            statusMessage.classList.add('bg-gray-600');
+            
+            if (type === 'success') {
+                statusMessage.classList.remove('bg-gray-600');
+                statusMessage.classList.add('message-box-success', 'text-green-800');
+            } else if (type === 'error') {
+                statusMessage.classList.remove('bg-gray-600');
+                statusMessage.classList.add('message-box-error', 'text-red-800');
+            }
+
+            statusMessage.textContent = message;
+        }
+
+        async function initFirebase() {
+            try {
+                if (!firebaseConfig) {
+                    throw new Error("Initialization Failed: Firebase configuration is missing or invalid.");
+                }
+
+                // 2. Initialize services
+                const app = initializeApp(firebaseConfig);
+                auth = getAuth(app);
+                db = getFirestore(app);
+
+                // 3. Authenticate based on environment token or fall back to anonymous
+                let userCredential;
+                if (initialAuthToken) {
+                    userCredential = await signInWithCustomToken(auth, initialAuthToken);
+                } else {
+                    userCredential = await signInAnonymously(auth);
+                }
+
+                if (userCredential && userCredential.user && userCredential.user.uid) {
+                    userId = userCredential.user.uid;
+                    console.log(`Firebase Auth Success. User ID: ${userId}`);
+                    
+                    // Success: Reveal the form and update status
+                    updateStatus('success', `Connection secured. Your Session ID: ${userId}`);
+                    userIdDisplay.textContent = `User ID for Database Access: ${userId}`;
+                    
+                    setTimeout(() => {
+                        statusMessage.classList.add('hidden');
+                        form.classList.remove('hidden');
+                        submitButton.disabled = false;
+                        switchView('application'); // Show the application form
+                    }, 500); 
+                } else {
+                    throw new Error("Authentication failed: Could not retrieve a valid user ID.");
+                }
+
+            } catch (error) {
+                console.error("Firebase Authentication/Initialization Error:", error);
+                
+                // Detailed error display for debugging
+                updateStatus('hidden', ''); 
+                errorDisplay.classList.remove('hidden');
+                errorText.textContent = error.message;
+                errorDisplay.classList.add('message-box-error');
+                // Ensure form and admin button are visible even if status fails, but disable submission
+                applicationView.classList.remove('hidden');
+                form.classList.remove('hidden');
+                submitButton.disabled = true;
+            }
+        }
+        
+        // --- FORM SUBMISSION HANDLER ---
+        form.addEventListener('submit', async function(event) {
+            event.preventDefault();
+
+            messageBox.classList.add('hidden');
+            if (!form.checkValidity()) {
+                messageBox.textContent = "Please fill out all required fields before submission.";
+                messageBox.className = "mt-6 p-4 text-center text-sm rounded-lg message-box-error block";
+                return;
+            }
+
+            submitButton.disabled = true;
+            submitButton.textContent = 'Submitting...';
+            spinner.classList.remove('hidden');
+
+            try {
+                const formData = new FormData(form);
+                const data = {};
+                for (let [key, value] of formData.entries()) {
+                    data[key] = value;
+                }
+                
+                data.applicantId = userId;
+                data.submissionDate = serverTimestamp();
+                data.appId = appId; 
+                data.chapterName = 'Martha Chapter #7 OES';
+                data.status = 'Pending Membership Review'; // Initial status
+                
+                const collectionRef = collection(db, COLLECTION_PATH);
+                await addDoc(collectionRef, data);
+
+                messageBox.textContent = 'Success! Your membership application has been submitted and saved to the database. Thank you.';
+                messageBox.className = "mt-6 p-4 text-center text-sm rounded-lg message-box-success block";
+                form.reset();
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+
+            } catch (e) {
+                console.error("Error adding document: ", e);
+                messageBox.textContent = `Submission failed due to a database error: ${e.message}. Please check your connection.`;
+                messageBox.className = "mt-6 p-4 text-center text-sm rounded-lg message-box-error block";
+            } finally {
+                submitButton.textContent = 'Submit Membership Application';
+                submitButton.disabled = false;
+                spinner.classList.add('hidden');
+            }
+        });
+
+
+        // --- ADMIN LOGIN LOGIC ---
+        showAdminLoginButton.addEventListener('click', () => switchView('adminLogin'));
+        backToAppButton.addEventListener('click', () => switchView('application'));
+        adminLogoutButton.addEventListener('click', () => {
+            isAdminLoggedIn = false;
+            switchView('application');
+        });
+
+        adminLoginButton.addEventListener('click', () => {
+            const code = adminCodeInput.value.trim();
+            if (code === ADMIN_CODE) {
+                isAdminLoggedIn = true;
+                switchView('adminPanel');
+            } else {
+                adminLoginError.classList.remove('hidden');
+                adminCodeInput.value = '';
+            }
+        });
+
+        // --- ADMIN PANEL DATA FETCH ---
+
+        function loadApplications() {
+            if (!db || !isAdminLoggedIn) return;
+
+            adminPanelStatus.textContent = 'Loading applications...';
+            adminPanelStatus.classList.remove('hidden');
+            applicationsList.innerHTML = '';
+            noApplicationsMsg.classList.add('hidden');
+
+            const collectionRef = collection(db, COLLECTION_PATH);
+            
+            // Listen for real-time updates
+            onSnapshot(collectionRef, (snapshot) => {
+                applicationsList.innerHTML = ''; // Clear previous list
+                adminPanelStatus.classList.add('hidden'); // Hide status when data starts arriving
+                
+                const applications = [];
+                snapshot.forEach(doc => {
+                    const data = doc.data();
+                    applications.push({ id: doc.id, ...data });
+                });
+
+                if (applications.length === 0) {
+                    noApplicationsMsg.classList.remove('hidden');
+                    return;
+                }
+                
+                // Sort applications by submission date (newest first, if available)
+                applications.sort((a, b) => {
+                    const dateA = a.submissionDate?.toDate ? a.submissionDate.toDate().getTime() : 0;
+                    const dateB = b.submissionDate?.toDate ? b.submissionDate.toDate().getTime() : 0;
+                    return dateB - dateA;
+                });
+
+                applications.forEach(app => {
+                    const submissionTime = app.submissionDate?.toDate ? app.submissionDate.toDate().toLocaleString() : 'N/A';
+                    
+                    const card = document.createElement('div');
+                    card.className = 'admin-card p-4 rounded-lg shadow-md transition-all hover:shadow-lg';
+                    card.innerHTML = `
+                        <div class="font-bold text-lg text-gray-800 flex justify-between items-center mb-2">
+                            <span>${app.fullName || 'No Name Provided'}</span>
+                            <span class="text-xs font-medium px-2 py-1 rounded-full bg-yellow-200 text-yellow-800">${app.status || 'Unknown'}</span>
+                        </div>
+                        <p class="text-sm text-gray-500 mb-3">Submitted: ${submissionTime}</p>
+                        <div class="text-sm space-y-1">
+                            <p><strong>Email:</strong> ${app.email || 'N/A'}</p>
+                            <p><strong>Phone:</strong> ${app.phone || 'N/A'}</p>
+                            <p><strong>DOB:</strong> ${app.dob || 'N/A'}</p>
+                            <p class="pt-2 font-semibold text-gray-700">Inspiration: <span class="font-normal italic">${app.q1 || 'Not Answered'}</span></p>
+                        </div>
+                        <details class="mt-4 pt-2 border-t border-gray-100">
+                            <summary class="font-semibold text-sm cursor-pointer text-blue-600 hover:text-blue-800">View Full Details (${app.id.substring(0, 8)})</summary>
+                            <div class="mt-2 text-xs space-y-1 p-2 bg-gray-50 rounded">
+                                <p><strong>Address:</strong> ${app.address}</p>
+                                <p><strong>T-Shirt Size:</strong> ${app.tShirtSize}</p>
+                                <p><strong>Belief in God:</strong> ${app.q2}</p>
+                                <p><strong>Attends Church:</strong> ${app.q3}</p>
+                                <p><strong>Religious Preference:</strong> ${app.q6}</p>
+                                <p><strong>Secrecy/Loyalty:</strong> ${app.q10}</p>
+                                <p><strong>Financial Feelings:</strong> ${app.q11}</p>
+                                <p><strong>Sisterhood Feelings:</strong> ${app.q13}</p>
+                                <p><strong>Ref 1:</strong> ${app.reference1}</p>
+                                <p><strong>Ref 2:</strong> ${app.reference2}</p>
+                                <p><strong>Sponsor:</strong> ${app.memberSignature || 'N/A'}</p>
+                            </div>
+                        </details>
+                    `;
+                    applicationsList.appendChild(card);
+                });
+
+            }, (error) => {
+                console.error("Error loading applications in Admin Panel:", error);
+                adminPanelStatus.textContent = 'Error loading data: Permission Denied or Network Issue.';
+                adminPanelStatus.classList.remove('hidden');
+                adminPanelStatus.classList.add('message-box-error');
+                applicationsList.innerHTML = '';
+            });
+        }
+
+        // Start App Initialization
+        initFirebase();
+    </script>
+</body>
+</html>
+
