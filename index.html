@@ -100,6 +100,7 @@
             transform: scale(1);
         }
         
+        /* Admin Interface Styling */
         .btn-admin {
             background-color: var(--color-primary);
             color: var(--color-accent);
@@ -113,6 +114,26 @@
             background-color: #ffffff;
             border: 1px solid #e5e7eb;
             border-top: 5px solid var(--color-primary);
+        }
+
+        /* NEW: Admin Action Buttons */
+        .btn-download {
+            background-color: #3b82f6; /* Blue */
+            color: white;
+            transition: all 0.2s;
+        }
+        .btn-download:hover {
+            background-color: #2563eb;
+            transform: scale(1.02);
+        }
+        .btn-delete {
+            background-color: #ef4444; /* Red */
+            color: white;
+            transition: all 0.2s;
+        }
+        .btn-delete:hover {
+            background-color: #dc2626;
+            transform: scale(1.02);
         }
 
         /* Utility classes for status messages */
@@ -366,9 +387,10 @@
     </div>
 
     <script type="module">
+        // Added doc and deleteDoc imports for admin features
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, addDoc, collection, serverTimestamp, setLogLevel, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, addDoc, collection, serverTimestamp, setLogLevel, onSnapshot, doc, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // Enable debug logging for Firestore
         setLogLevel('debug');
@@ -379,7 +401,6 @@
         // ====================================================================
         // FIREBASE CONFIGURATION (Provided by user)
         // ====================================================================
-        // NOTE: This uses the exact configuration you provided previously.
         const FIREBASE_CONFIG = {
           apiKey: "AIzaSyBAYN5FX3snNSLDjcxnjT1PNC33Qu5TlWo",
           authDomain: "hezekiah-lodge-admin.firebaseapp.com",
@@ -585,6 +606,73 @@
             }
         });
 
+        // --- ADMIN ACTION FUNCTIONS ---
+
+        // Helper function for admin alerts (replaces console.log/alert)
+        function alertUser(type, message) {
+            const alertBox = document.getElementById('adminPanelStatus');
+            alertBox.textContent = message;
+            alertBox.classList.remove('hidden', 'message-box-error', 'message-box-success', 'bg-yellow-50', 'text-gray-600', 'text-red-800', 'text-green-800');
+            alertBox.classList.add('block', 'font-medium', 'mb-4'); // Ensure it is visible and styled
+            
+            if (type === 'success') {
+                 alertBox.classList.add('message-box-success', 'text-green-800');
+            } else if (type === 'error') {
+                 alertBox.classList.add('message-box-error', 'text-red-800');
+            } else { // default loading/info
+                alertBox.classList.remove('message-box-error', 'message-box-success');
+                alertBox.classList.add('bg-yellow-50', 'text-gray-600');
+            }
+        }
+
+        // Function to download application data as a JSON file
+        function downloadApplication(data, id) {
+            // Create a clean object for export (remove Firestore internal properties if present)
+            const dataToExport = JSON.parse(JSON.stringify(data)); 
+            
+            // Convert server timestamp to readable string for filename
+            const date = data.submissionDate?.toDate ? new Date(data.submissionDate.toDate()).toISOString().substring(0, 10) : 'unknown';
+            
+            const dataStr = JSON.stringify(dataToExport, null, 2);
+            const blob = new Blob([dataStr], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `OES_App_${date}_${id.substring(0, 8)}.json`;
+            
+            // Trigger download
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            
+            alertUser('success', `Application ${id.substring(0, 8)} data prepared for download.`);
+        }
+
+        // Function to delete application from Firestore
+        async function deleteApplication(docId) {
+            // NOTE: Since `confirm()` is forbidden, this deletes immediately. 
+            // In a real application, a custom modal confirmation would be mandatory.
+            
+            if (!db) {
+                alertUser('error', 'Database connection not ready.');
+                return;
+            }
+            
+            alertUser('info', `PERMANENTLY deleting application ${docId.substring(0, 8)}...`);
+
+            try {
+                const docRef = doc(db, COLLECTION_PATH, docId);
+                await deleteDoc(docRef);
+                alertUser('success', `Application ${docId.substring(0, 8)} has been permanently deleted.`);
+                // The onSnapshot listener will automatically remove the card from the UI.
+            } catch (e) {
+                console.error("Error deleting document: ", e);
+                alertUser('error', `Failed to delete application ${docId.substring(0, 8)}. Error: ${e.message}`);
+            }
+        }
+
+
         // --- ADMIN PANEL DATA FETCH ---
 
         function loadApplications() {
@@ -594,15 +682,13 @@
                 return;
             }
 
-            adminPanelStatus.textContent = 'Loading applications...';
-            adminPanelStatus.classList.remove('hidden');
+            alertUser('info', 'Loading applications...');
             applicationsList.innerHTML = '';
             noApplicationsMsg.classList.add('hidden');
 
             const collectionRef = collection(db, COLLECTION_PATH);
             
             // Listen for real-time updates
-            // NOTE: This requires 'read' access, which the security rules must allow for all authenticated users.
             onSnapshot(collectionRef, (snapshot) => {
                 applicationsList.innerHTML = ''; // Clear previous list
                 adminPanelStatus.classList.add('hidden'); // Hide status when data starts arriving
@@ -630,7 +716,10 @@
                     
                     const card = document.createElement('div');
                     card.className = 'admin-card p-4 rounded-lg shadow-md transition-all hover:shadow-lg';
-                    card.innerHTML = `
+                    
+                    // Create the main content block
+                    const mainContent = document.createElement('div');
+                    mainContent.innerHTML = `
                         <div class="font-bold text-lg text-gray-800 flex justify-between items-center mb-2">
                             <span>${app.fullName || 'No Name Provided'}</span>
                             <span class="text-xs font-medium px-2 py-1 rounded-full bg-yellow-200 text-yellow-800">${app.status || 'Unknown'}</span>
@@ -643,7 +732,7 @@
                             <p class="pt-2 font-semibold text-gray-700">Inspiration: <span class="font-normal italic">${app.q1 || 'Not Answered'}</span></p>
                         </div>
                         <details class="mt-4 pt-2 border-t border-gray-100">
-                            <summary class="font-semibold text-sm cursor-pointer text-blue-600 hover:text-blue-800">View Full Details (App ID: ${app.id.substring(0, 8)})</summary>
+                            <summary class="font-semibold text-sm cursor-pointer text-blue-600 hover:text-blue-800">View Full Details (App ID: ${app.id.substring(0, 8)}...)</summary>
                             <div class="mt-2 text-xs space-y-1 p-2 bg-gray-50 rounded">
                                 <p><strong>Address:</strong> ${app.address}</p>
                                 <p><strong>T-Shirt Size:</strong> ${app.tShirtSize}</p>
@@ -662,9 +751,6 @@
                                 <p><strong>Financial Obligations (#11):</strong> ${app.q11}</p>
                                 <p><strong>Sisterhood (#13):</strong> ${app.q13}</p>
                                 <div class="h-px bg-gray-200 my-2"></div>
-                                <p><strong>Prior App Chapter (#8):</strong> ${app.q8}</p>
-                                <p><strong>Prior App Disposition (#9):</strong> ${app.q9}</p>
-                                <div class="h-px bg-gray-200 my-2"></div>
                                 <p><strong>Ref 1:</strong> ${app.reference1}</p>
                                 <p><strong>Ref 2:</strong> ${app.reference2}</p>
                                 <p><strong>Sponsor Name:</strong> ${app.memberSignature || 'N/A'}</p>
@@ -672,15 +758,36 @@
                             </div>
                         </details>
                     `;
+                    card.appendChild(mainContent);
+
+                    // Add buttons container and buttons
+                    const buttonsContainer = document.createElement('div');
+                    buttonsContainer.className = 'flex gap-2 mt-4 pt-3 border-t border-gray-200';
+                    
+                    // Download Button
+                    const downloadBtn = document.createElement('button');
+                    downloadBtn.textContent = 'Download JSON';
+                    downloadBtn.className = 'flex-1 py-2 text-sm rounded-lg font-semibold btn-download shadow';
+                    downloadBtn.onclick = () => downloadApplication(app, app.id);
+                    
+                    // Delete Button
+                    const deleteBtn = document.createElement('button');
+                    deleteBtn.textContent = 'Delete';
+                    deleteBtn.className = 'flex-1 py-2 text-sm rounded-lg font-semibold btn-delete shadow';
+                    deleteBtn.title = 'Permanently deletes this record.';
+                    deleteBtn.onclick = () => deleteApplication(app.id); 
+
+                    buttonsContainer.appendChild(downloadBtn);
+                    buttonsContainer.appendChild(deleteBtn);
+
+                    card.appendChild(buttonsContainer);
                     applicationsList.appendChild(card);
                 });
 
             }, (error) => {
                 console.error("Error loading applications in Admin Panel:", error);
                 // Display the permission error to the admin
-                adminPanelStatus.textContent = `Error loading data: Missing or insufficient permissions. Please check your Firebase Security Rules. Error: ${error.message}`;
-                adminPanelStatus.classList.remove('hidden');
-                adminPanelStatus.classList.add('message-box-error', 'text-red-800');
+                alertUser('error', `Error loading data: Missing or insufficient permissions. Please check your Firebase Security Rules. Error: ${error.message}`);
                 applicationsList.innerHTML = '';
             });
         }
