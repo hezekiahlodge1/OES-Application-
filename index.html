@@ -379,6 +379,7 @@
         // ====================================================================
         // FIREBASE CONFIGURATION (Provided by user)
         // ====================================================================
+        // NOTE: This uses the exact configuration you provided previously.
         const FIREBASE_CONFIG = {
           apiKey: "AIzaSyBAYN5FX3snNSLDjcxnjT1PNC33Qu5TlWo",
           authDomain: "hezekiah-lodge-admin.firebaseapp.com",
@@ -386,11 +387,11 @@
           storageBucket: "hezekiah-lodge-admin.firebasestorage.app",
           messagingSenderId: "599617453177",
           appId: "1:599617453177:web:7ff088d9ac115427aca8a8",
-          // measurementId is optional and not needed for core functionality
         };
         
-        // We use a hardcoded, generic App ID for the public collection path.
+        // We use a hardcoded, generic App ID for the public collection path based on security rules.
         const LIVE_APP_ID = 'oes-martha-live'; 
+        // Path: /artifacts/{appId}/public/data/oes_applications
         const COLLECTION_PATH = `/artifacts/${LIVE_APP_ID}/public/data/oes_applications`;
 
         let db, auth;
@@ -455,7 +456,7 @@
         // --- FIREBASE INITIALIZATION & AUTH ---
 
         function updateStatus(type, message) {
-            statusMessage.classList.remove('message-box-success', 'message-box-error', 'hidden');
+            statusMessage.classList.remove('message-box-success', 'message-box-error', 'hidden', 'text-green-800', 'text-red-800');
             statusMessage.classList.add('bg-gray-600');
             
             if (type === 'success') {
@@ -476,16 +477,15 @@
                 auth = getAuth(app);
                 db = getFirestore(app);
 
-                // 2. Authenticate with Anonymous Sign-In (Required for GitHub Pages)
+                // 2. Authenticate with Anonymous Sign-In (Required for public write access)
                 const userCredential = await signInAnonymously(auth);
 
                 if (userCredential && userCredential.user && userCredential.user.uid) {
-                    // NOTE: Anonymous user IDs change across sessions, but we use it to prove auth.
                     userId = userCredential.user.uid; 
                     console.log(`Firebase Auth Success via Anonymous. User ID: ${userId}`);
                     
                     // Success: Reveal the form and update status
-                    updateStatus('success', `Connection secured. App ID: ${LIVE_APP_ID}`);
+                    updateStatus('success', `Connection secured. Chapter: Martha Chapter #7`);
                     userIdDisplay.textContent = `Client User ID (Temporary): ${userId}`;
                     
                     setTimeout(() => {
@@ -504,7 +504,7 @@
                 // Detailed error display for debugging
                 updateStatus('hidden', ''); 
                 errorDisplay.classList.remove('hidden');
-                errorText.textContent = `Firebase connection failed. Error: ${error.message}. Ensure Anonymous Auth is enabled and Security Rules are correct.`;
+                errorText.textContent = `Firebase connection failed. Error: ${error.message}. Please ensure your Firebase Configuration is correct, Anonymous Auth is enabled, and Security Rules are published.`;
                 errorDisplay.classList.add('message-box-error');
                 
                 // Ensure form and admin button are visible even if status fails, but disable submission
@@ -519,6 +519,7 @@
             event.preventDefault();
 
             messageBox.classList.add('hidden');
+            // Manual validation check (browser handles most, but ensures prompt feedback)
             if (!form.checkValidity()) {
                 messageBox.textContent = "Please fill out all required fields before submission.";
                 messageBox.className = "mt-6 p-4 text-center text-sm rounded-lg message-box-error block";
@@ -548,11 +549,14 @@
                 messageBox.textContent = 'Success! Your membership application has been submitted and saved to the database. Thank you.';
                 messageBox.className = "mt-6 p-4 text-center text-sm rounded-lg message-box-success block";
                 form.reset();
+                // Optionally hide the form after success
+                // form.classList.add('hidden'); 
                 window.scrollTo({ top: 0, behavior: 'smooth' });
 
             } catch (e) {
                 console.error("Error adding document: ", e);
-                messageBox.textContent = `Submission failed due to a database error: ${e.message}. Check your Firebase Security Rules.`;
+                // The most common error here is insufficient permissions.
+                messageBox.textContent = `Submission failed due to a database error: ${e.message}. Please verify your Firebase Security Rules are published correctly.`;
                 messageBox.className = "mt-6 p-4 text-center text-sm rounded-lg message-box-error block";
             } finally {
                 submitButton.textContent = 'Submit Membership Application';
@@ -584,7 +588,11 @@
         // --- ADMIN PANEL DATA FETCH ---
 
         function loadApplications() {
-            if (!db || !isAdminLoggedIn) return;
+            if (!db || !isAdminLoggedIn) {
+                adminPanelStatus.textContent = 'Not authorized or database not ready.';
+                adminPanelStatus.classList.remove('hidden');
+                return;
+            }
 
             adminPanelStatus.textContent = 'Loading applications...';
             adminPanelStatus.classList.remove('hidden');
@@ -594,6 +602,7 @@
             const collectionRef = collection(db, COLLECTION_PATH);
             
             // Listen for real-time updates
+            // NOTE: This requires 'read' access, which the security rules must allow for all authenticated users.
             onSnapshot(collectionRef, (snapshot) => {
                 applicationsList.innerHTML = ''; // Clear previous list
                 adminPanelStatus.classList.add('hidden'); // Hide status when data starts arriving
@@ -634,19 +643,32 @@
                             <p class="pt-2 font-semibold text-gray-700">Inspiration: <span class="font-normal italic">${app.q1 || 'Not Answered'}</span></p>
                         </div>
                         <details class="mt-4 pt-2 border-t border-gray-100">
-                            <summary class="font-semibold text-sm cursor-pointer text-blue-600 hover:text-blue-800">View Full Details (${app.id.substring(0, 8)})</summary>
+                            <summary class="font-semibold text-sm cursor-pointer text-blue-600 hover:text-blue-800">View Full Details (App ID: ${app.id.substring(0, 8)})</summary>
                             <div class="mt-2 text-xs space-y-1 p-2 bg-gray-50 rounded">
                                 <p><strong>Address:</strong> ${app.address}</p>
                                 <p><strong>T-Shirt Size:</strong> ${app.tShirtSize}</p>
-                                <p><strong>Belief in God:</strong> ${app.q2}</p>
-                                <p><strong>Attends Church:</strong> ${app.q3}</p>
-                                <p><strong>Religious Preference:</strong> ${app.q6}</p>
-                                <p><strong>Secrecy/Loyalty:</strong> ${app.q10}</p>
-                                <p><strong>Financial Feelings:</strong> ${app.q11}</p>
-                                <p><strong>Sisterhood Feelings:</strong> ${app.q13}</p>
+                                <p><strong>Fav Star Color:</strong> ${app.favoriteStarPointColor}</p>
+                                <p><strong>Emergency Contact:</strong> ${app.emergencyContact}</p>
+                                <div class="h-px bg-gray-200 my-2"></div>
+                                <p><strong>Belief in God (#2):</strong> ${app.q2}</p>
+                                <p><strong>Religious Preference (#6):</strong> ${app.q6}</p>
+                                <p><strong>Church Attendance (#3):</strong> ${app.q3}</p>
+                                <p><strong>Willing to Travel (#4):</strong> ${app.q4}</p>
+                                <p><strong>Reliable Transportation (#5):</strong> ${app.q5}</p>
+                                <p><strong>Available Saturdays (#7):</strong> ${app.q7}</p>
+                                <p><strong>Problem Paying Dues (#12):</strong> ${app.q12}</p>
+                                <div class="h-px bg-gray-200 my-2"></div>
+                                <p><strong>Secrecy/Loyalty (#10):</strong> ${app.q10}</p>
+                                <p><strong>Financial Obligations (#11):</strong> ${app.q11}</p>
+                                <p><strong>Sisterhood (#13):</strong> ${app.q13}</p>
+                                <div class="h-px bg-gray-200 my-2"></div>
+                                <p><strong>Prior App Chapter (#8):</strong> ${app.q8}</p>
+                                <p><strong>Prior App Disposition (#9):</strong> ${app.q9}</p>
+                                <div class="h-px bg-gray-200 my-2"></div>
                                 <p><strong>Ref 1:</strong> ${app.reference1}</p>
                                 <p><strong>Ref 2:</strong> ${app.reference2}</p>
-                                <p><strong>Sponsor:</strong> ${app.memberSignature || 'N/A'}</p>
+                                <p><strong>Sponsor Name:</strong> ${app.memberSignature || 'N/A'}</p>
+                                <p><strong>Applicant Signature (Name):</strong> ${app.applicantSignature || 'N/A'}</p>
                             </div>
                         </details>
                     `;
@@ -655,9 +677,10 @@
 
             }, (error) => {
                 console.error("Error loading applications in Admin Panel:", error);
-                adminPanelStatus.textContent = `Error loading data: ${error.message}. Check your Firebase Security Rules.`;
+                // Display the permission error to the admin
+                adminPanelStatus.textContent = `Error loading data: Missing or insufficient permissions. Please check your Firebase Security Rules. Error: ${error.message}`;
                 adminPanelStatus.classList.remove('hidden');
-                adminPanelStatus.classList.add('message-box-error');
+                adminPanelStatus.classList.add('message-box-error', 'text-red-800');
                 applicationsList.innerHTML = '';
             });
         }
